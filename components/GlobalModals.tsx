@@ -41,7 +41,49 @@ const GlobalModals: React.FC<GlobalModalsProps> = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const [showPinflInput, setShowPinflInput] = useState(false);
+  const [pinflValue, setPinflValue] = useState('');
+  const [isFetchingData, setIsFetchingData] = useState(false);
 
+  const handleMyIDRequest = async () => {
+    if (pinflValue.length !== 14) {
+      alert("ПИНФЛ должен быть ровно 14 цифр");
+      return;
+    }
+
+    setIsFetchingData(true);
+    try {
+      const response = await fetch('http://localhost:3000/api/myid-proxy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pinfl: pinflValue })
+      });
+      const data = await response.json();
+
+      if (data && !data.error) {
+        setEmpForm(prev => ({
+          ...prev,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          middleName: data.middleName,
+          passportSerial: data.passportSerial,
+          passportPIN: data.passportPIN,
+          residence: data.residence,
+          photoUrl: data.photoUrl,
+          phoneNumber: data.phoneNumber || prev.phoneNumber
+        }));
+        setShowPinflInput(false);
+        setPinflValue('');
+      } else {
+        alert(data.error || "Ошибка загрузки данных");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Не удалось соединиться с сервером");
+    } finally {
+      setIsFetchingData(false);
+    }
+  };
 
   useEffect(() => {
     if (activeModal === 'add_employee') {
@@ -190,15 +232,78 @@ const GlobalModals: React.FC<GlobalModalsProps> = ({
               </div>
             </div>
 
-            <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="md:col-span-2 flex items-center justify-between"><h5 className="text-sm font-black uppercase text-indigo-500">Персональная анкета</h5><hr className="flex-1 ml-4 opacity-10" /></div>
-              <div className="space-y-1"><label className={labelClass}>Фамилия</label><input required className={inputClass} value={empForm.lastName} onChange={e => setEmpForm({ ...empForm, lastName: e.target.value })} placeholder="Фамилия" /></div>
-              <div className="space-y-1"><label className={labelClass}>Имя</label><input required className={inputClass} value={empForm.firstName} onChange={e => setEmpForm({ ...empForm, firstName: e.target.value })} placeholder="Имя" /></div>
-              <div className="space-y-1"><label className={labelClass}>Отчество</label><input className={inputClass} value={empForm.middleName} onChange={e => setEmpForm({ ...empForm, middleName: e.target.value })} placeholder="Отчество" /></div>
-              <div className="space-y-1"><label className={labelClass}>Телефон</label><input required className={inputClass} value={empForm.phoneNumber} onChange={e => setEmpForm({ ...empForm, phoneNumber: e.target.value })} placeholder="+998" /></div>
-              <div className="space-y-1"><label className={labelClass}>Серия паспорта</label><input required className={inputClass} maxLength={9} value={empForm.passportSerial} onChange={e => setEmpForm({ ...empForm, passportSerial: e.target.value.toUpperCase() })} placeholder="AA1234567" /></div>
-              <div className="space-y-1"><label className={labelClass}>ПИНФЛ (14 цифр)</label><input required className={inputClass} maxLength={14} value={empForm.passportPIN} onChange={e => setEmpForm({ ...empForm, passportPIN: e.target.value.replace(/\D/g, '') })} placeholder="12345678901234" /></div>
-              <div className="md:col-span-2 space-y-1"><label className={labelClass}>Адрес проживания</label><input required className={inputClass} value={empForm.residence} onChange={e => setEmpForm({ ...empForm, residence: e.target.value })} placeholder="Город, Район, Улица..." /></div>
+            <div className={`md:col-span-2 relative overflow-hidden min-h-[400px]`}>
+              {/* Main Form Section */}
+              <div className={`grid grid-cols-1 md:grid-cols-2 gap-6 transition-all duration-500 transform ${showPinflInput ? '-translate-y-full opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'}`}>
+                <div className="md:col-span-2 flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <h5 className="text-sm font-black uppercase text-indigo-500">Персональная анкета</h5>
+                    <button
+                      type="button"
+                      onClick={() => setShowPinflInput(true)}
+                      className="p-3 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-all flex items-center gap-2 group shadow-lg"
+                    >
+                      <span className="text-[10px] font-bold">Использовать ПИНФЛ</span>
+                      <Shield size={16} className="group-hover:translate-x-1 transition-transform" />
+                    </button>
+                  </div>
+                  <hr className="flex-1 ml-4 opacity-10" />
+                </div>
+                <div className="space-y-1"><label className={labelClass}>Фамилия</label><input required className={inputClass} value={empForm.lastName} onChange={e => setEmpForm({ ...empForm, lastName: e.target.value })} placeholder="Фамилия" /></div>
+                <div className="space-y-1"><label className={labelClass}>Имя</label><input required className={inputClass} value={empForm.firstName} onChange={e => setEmpForm({ ...empForm, firstName: e.target.value })} placeholder="Имя" /></div>
+                <div className="space-y-1"><label className={labelClass}>Отчество</label><input className={inputClass} value={empForm.middleName} onChange={e => setEmpForm({ ...empForm, middleName: e.target.value })} placeholder="Отчество" /></div>
+                <div className="space-y-1"><label className={labelClass}>Телефон</label><input required className={inputClass} value={empForm.phoneNumber} onChange={e => setEmpForm({ ...empForm, phoneNumber: e.target.value })} placeholder="+998" /></div>
+                <div className="space-y-1"><label className={labelClass}>Серия паспорта</label><input required className={inputClass} maxLength={9} value={empForm.passportSerial} onChange={e => setEmpForm({ ...empForm, passportSerial: e.target.value.toUpperCase() })} placeholder="AA1234567" /></div>
+                <div className="space-y-1"><label className={labelClass}>ПИНФЛ (14 цифр)</label><input required className={inputClass} maxLength={14} value={empForm.passportPIN} onChange={e => setEmpForm({ ...empForm, passportPIN: e.target.value.replace(/\D/g, '') })} placeholder="12345678901234" /></div>
+                <div className="md:col-span-2 space-y-1"><label className={labelClass}>Адрес проживания</label><input required className={inputClass} value={empForm.residence} onChange={e => setEmpForm({ ...empForm, residence: e.target.value })} placeholder="Город, Район, Улица..." /></div>
+              </div>
+
+              {/* PINFL Entry Section */}
+              <div className={`absolute inset-0 flex flex-col items-center justify-center space-y-8 transition-all duration-500 transform ${showPinflInput ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0 pointer-events-none'}`}>
+                <div className="bg-slate-50 dark:bg-slate-800/50 p-10 rounded-[3rem] border border-slate-100 dark:border-slate-700 w-full max-w-md shadow-2xl">
+                  <h5 className="text-xl font-black text-center mb-6 text-indigo-500 uppercase tracking-tighter">Автозаполнение MyID</h5>
+                  <div className="space-y-4">
+                    <div className="space-y-1">
+                      <label className={labelClass}>Введите ПИНФЛ (14 цифр)</label>
+                      <input
+                        className={`${inputClass} text-center text-2xl tracking-[0.5em]`}
+                        maxLength={14}
+                        value={pinflValue}
+                        onChange={e => setPinflValue(e.target.value.replace(/\D/g, ''))}
+                        placeholder="00000000000000"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      disabled={isFetchingData || pinflValue.length !== 14}
+                      onClick={handleMyIDRequest}
+                      className={`w-full py-5 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 transition-all ${isFetchingData || pinflValue.length !== 14 ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-emerald-600 text-white shadow-xl hover:bg-emerald-700 hover:scale-105 active:scale-95'}`}
+                    >
+                      {isFetchingData ? (
+                        <>
+                          <Clock className="animate-spin" size={20} />
+                          Загрузка...
+                        </>
+                      ) : (
+                        <>
+                          <Shield size={20} />
+                          Запросить данные
+                        </>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowPinflInput(false)}
+                      className="w-full py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-indigo-500 transition-colors"
+                    >
+                      Назад к ручному вводу
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6 pb-8">
               <div className="md:col-span-2 flex items-center justify-between pt-4"><h5 className="text-sm font-black uppercase text-indigo-500">Служебные данные</h5><hr className="flex-1 ml-4 opacity-10" /></div>
               <div className="space-y-1">
                 <label className={labelClass}>Каталог / Отдел</label>
@@ -253,8 +358,6 @@ const GlobalModals: React.FC<GlobalModalsProps> = ({
                 <div className="absolute inset-0 border-[30px] border-black/10 pointer-events-none" />
                 <button type="button" onClick={capturePhoto} className="absolute bottom-10 left-1/2 -translate-x-1/2 w-20 h-20 bg-white rounded-full flex items-center justify-center text-indigo-600 shadow-2xl hover:scale-110 active:scale-90 transition-all"><Camera size={36} /></button>
               </div>
-              {/* FIXED CLOSE BUTTON */}
-              {/* FIXED CLOSE BUTTON - Minimalist */}
               <button type="button" onClick={stopCamera} className="absolute top-8 right-8 p-3 bg-white/10 hover:bg-black/50 backdrop-blur-md text-white rounded-full transition-all shadow-lg z-[3010]">
                 <X size={20} />
               </button>
